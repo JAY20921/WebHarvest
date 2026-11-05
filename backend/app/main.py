@@ -102,8 +102,10 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     )
 
 
-# Additional routes will be imported here in future phases
-# from app.api.routes import extraction, history, export
-# app.include_router(extraction.router, prefix="/api", tags=["extraction"])
-# app.include_router(history.router, prefix="/api", tags=["history"])
-# app.include_router(export.router, prefix="/api", tags=["export"])
+# Import API routes
+from app.api.routes import extraction, history, export
+
+# Include routers
+app.include_router(extraction.router, prefix="/api", tags=["extraction"])
+app.include_router(history.router, prefix="/api", tags=["history"])
+app.include_router(export.router, prefix="/api", tags=["export"])
