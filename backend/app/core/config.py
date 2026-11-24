@@ -3,8 +3,12 @@ Application Configuration
 Loads environment variables and provides settings object
 """
 
+from pathlib import Path
 from pydantic_settings import BaseSettings
 from typing import Optional
+
+# backend/app/core/config.py -> repo root is three levels above app/
+_REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -37,11 +41,11 @@ class Settings(BaseSettings):
     
     # Groq
     GROQ_API_KEY: Optional[str] = None
-    GROQ_MODEL: str = "mixtral-8x7b-32768"
+    GROQ_MODEL: str = "openai/gpt-oss-120b"
     
     # Gemini
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-3.5-flash-lite"
     
     # Timeouts & Limits
     LLM_TIMEOUT_SECONDS: int = 45
@@ -73,8 +77,11 @@ class Settings(BaseSettings):
     MOCK_LLM: bool = False
     
     class Config:
-        env_file = ".env"
+        # Look for .env in the current dir first, then the repo root, so the
+        # backend works whether started from the repo root or from backend/.
+        env_file = (str(_REPO_ROOT / ".env"), ".env")
         case_sensitive = True
+        extra = "ignore"
 
 
 # Create global settings instance

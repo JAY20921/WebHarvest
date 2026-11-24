@@ -1,5 +1,12 @@
 # Development Handoff Document
 
+> **Session 2026-11-23: cloud database migration (Docker removed)**
+> - Done: cloud Postgres/Redis compatibility, retired LLM models replaced, extraction bugs fixed, frontend builds, 39/39 tests pass, live scrape→LLM→extract verified on books.toscrape.com.
+> - Cloud services connected: Neon Postgres (us-east-2, pooler) + Redis Cloud. Full API→Celery→worker→DB flow verified with 2 consecutive jobs; JSON/CSV/XLSX export and history work.
+> - Known gaps: values stored only in CSS classes (e.g. star ratings `class="star-rating Three"`) extract as null; requests take 3-6s due to DB region latency.
+> - Verify: `cd backend; .env\Scripts\python -m scripts.check_connections` then `.env\Scripts\python -m pytest`. Run steps in `CLOUD_SETUP.md` Step 5.
+> - Known: local Python is 3.10 (project targets 3.11; works, google-api-core warns).
+
 **Last Updated**: 2026-11-05 14:45 PM
 **Project**: Intelligent Scraper - AI-Powered Web Data Extraction Platform
 **Current Phase**: ALL PHASES COMPLETE ✅

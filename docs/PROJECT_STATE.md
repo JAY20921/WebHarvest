@@ -1,5 +1,7 @@
 # Project State
 
+> **2026-11-23:** Docker removed; app runs natively against cloud Postgres/Redis (see `CLOUD_SETUP.md`). Backend tests 39/39 pass, frontend builds, live extraction verified. Connected to Neon + Redis Cloud; full job flow verified end to end.
+
 **Last Updated**: 2026-11-05 11:52 AM
 **Current Phase**: Phase 1 Complete - Ready for Phase 2
 **Overall Status**: 🟢 On Track

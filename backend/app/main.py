@@ -6,6 +6,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from app.core.config import settings
 from app.models.database import init_db, close_db, get_db
 from app.schemas.extraction import HealthResponse
@@ -85,7 +86,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     
     # Check database connection
     try:
-        await db.execute("SELECT 1")
+        await db.execute(text("SELECT 1"))
         services["database"] = "ok"
     except Exception as e:
         logger.error(f"Database health check failed: {e}")

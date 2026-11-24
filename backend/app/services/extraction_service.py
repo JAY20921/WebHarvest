@@ -143,7 +143,7 @@ class ExtractionService:
             selector = field_selectors.get(field_name, '')
             
             # Extract raw value
-            raw_value = self._extract_field_value(container, selector)
+            raw_value = self._extract_field_value(container, selector, field_type)
             
             # Normalize value based on type
             normalized_value = self._normalize_value(raw_value, field_type)
@@ -152,17 +152,40 @@ class ExtractionService:
         
         return record
     
-    def _extract_field_value(self, container, selector: str) -> Optional[str]:
+    def _extract_field_value(
+        self, container, selector: str, field_type: str = 'string'
+    ) -> Optional[str]:
         """
         Extract field value from container using selector
-        
+
         Args:
             container: BeautifulSoup element
             selector: CSS selector (relative to container)
-            
+            field_type: Expected type; link/image attributes are only returned
+                for url/link/image fields, text is returned otherwise
+
         Returns:
             Extracted text or None
         """
+        wants_url = (field_type or '').lower() in ('url', 'link', 'image', 'img')
+
+        # LLMs often emit Scrapy/parsel-style pseudo-selectors such as
+        # "h3 a::attr(href)" or "span::text", which BeautifulSoup rejects.
+        attr_name: Optional[str] = None
+        force_text = False
+        if selector:
+            attr_match = re.search(r'::attr\(\s*([\w\-:]+)\s*\)\s*$', selector)
+            if attr_match:
+                attr_name = attr_match.group(1)
+                selector = selector[:attr_match.start()].strip()
+            elif re.search(r'::text\s*$', selector):
+                force_text = True
+                selector = re.sub(r'::text\s*$', '', selector).strip()
+            if not selector:
+                element = container
+                if attr_name:
+                    return element.get(attr_name)
+                return self.parser.get_text_from_element(element)
         if not selector:
             # No selector, use container text
             return self.parser.get_text_from_element(container)
@@ -173,16 +196,34 @@ class ExtractionService:
             
             if not element:
                 return None
-            
-            # Check for special attributes
-            if element.name == 'a' and element.get('href'):
-                return element['href']
-            elif element.name == 'img' and element.get('src'):
-                return element['src']
-            elif element.get('content'):  # Meta tags
+
+            if attr_name:
+                value = element.get(attr_name)
+                return ' '.join(value) if isinstance(value, list) else value
+
+            # URL-type fields: return the link/image target
+            if wants_url and not force_text:
+                if element.name != 'a' and element.name != 'img':
+                    # Selector may point at a wrapper (e.g. "h3") around the link
+                    element = element.find(['a', 'img']) or element
+                if element.name == 'a' and element.get('href'):
+                    return element['href']
+                if element.name == 'img' and element.get('src'):
+                    return element['src']
+
+            if element.get('content'):  # Meta tags
                 return element['content']
-            else:
-                return self.parser.get_text_from_element(element)
+
+            if element.name == 'img':
+                return element.get('alt') or element.get('title')
+
+            text = self.parser.get_text_from_element(element)
+            # Sites often truncate visible link text ("A Light in the ...")
+            # and keep the full value in the title attribute
+            title_attr = element.get('title')
+            if title_attr and (not text or text.endswith(('...', '…'))):
+                return title_attr
+            return text
                 
         except Exception as e:
             logger.debug(f"Failed to extract field with selector '{selector}': {e}")
@@ -246,12 +287,20 @@ class ExtractionService:
             # Remove common non-numeric characters
             cleaned = re.sub(r'[^\d.,\-+]', '', str(value))
             
-            # Handle comma as decimal separator (European format)
-            if ',' in cleaned and '.' not in cleaned:
-                cleaned = cleaned.replace(',', '.')
-            else:
-                # Remove thousand separators
-                cleaned = cleaned.replace(',', '')
+            if ',' in cleaned and '.' in cleaned:
+                # Both present: whichever comes last is the decimal separator
+                # "1,299.99" (US) vs "1.299,99" (European)
+                if cleaned.rfind(',') > cleaned.rfind('.'):
+                    cleaned = cleaned.replace('.', '').replace(',', '.')
+                else:
+                    cleaned = cleaned.replace(',', '')
+            elif ',' in cleaned:
+                # Comma only: decimal if a single comma followed by 1-2 digits
+                # ("12,50"), otherwise thousand separators ("1,299", "1,000,000")
+                if re.fullmatch(r'[\-+]?\d+,\d{1,2}', cleaned):
+                    cleaned = cleaned.replace(',', '.')
+                else:
+                    cleaned = cleaned.replace(',', '')
             
             # Convert to float
             number = float(cleaned)

@@ -14,8 +14,9 @@ pydantic==2.5.0
 pydantic-settings==2.1.0
 
 # Task Queue
-celery==5.3.4
-redis==5.0.1
+celery==5.4.0
+redis==5.2.1
+kombu==5.4.2  # kombu>=5.6 requires redis-py>=6.1; keep in step with celery 5.4
 
 # Web Scraping
 playwright==1.40.0

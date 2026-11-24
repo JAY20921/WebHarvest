@@ -8,6 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Cloud databases + health check fixes (2026-11-23)
+
+**Fixed**
+- Cloud Postgres URLs (Neon/Supabase/Railway) now work with asyncpg: `sslmode`/`channel_binding` converted or stripped, `postgres://` accepted, pooler hosts get `statement_cache_size=0` (`app/models/database.py`)
+- Celery works with TLS Redis (`rediss://`, Upstash/Redis Cloud); uses `solo` pool on Windows (`app/workers/celery_app.py`)
+- Worker disposes the DB engine after each task (avoids "attached to a different loop" on the 2nd job)
+- `.env` in repo root is found when the backend is started from `backend/`
+- Retired LLM models replaced: Groq `openai/gpt-oss-120b`, Gemini `gemini-3.5-flash-lite`
+- Extraction: string fields on links returned the href instead of text; truncated link text falls back to `title`; supports LLM-emitted `::attr(x)` / `::text` selectors
+- Number parsing: `"1,299"` was parsed as `1.299`
+- Jobs could not be queued: unpinned kombu 5.7 requires redis-py>=6.1; pinned `kombu==5.4.2`
+- Frontend build failed: `llm_provider_used` missing from `ExtractionJob` type
+
+**Added**
+- `backend/scripts/check_connections.py`: checks Postgres, Redis and LLM keys
+- `tests/test_extraction_field_values.py` (39 backend tests total, all passing)
+- No-Docker run instructions in `CLOUD_SETUP.md`
+
 ### Phase 1: Project Foundation (2026-11-05) ✅ COMPLETE
 
 #### Added

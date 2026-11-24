@@ -23,6 +23,7 @@ export interface ExtractionJob {
   error_message?: string;
   created_at: string;
   completed_at?: string;
+  llm_provider_used?: string;
 }
 
 export interface ExtractionProgress {

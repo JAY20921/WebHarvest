@@ -15,7 +15,7 @@ from app.services.llm_service import llm_service
 from app.services.extraction_service import ExtractionService
 from app.services.validation_service import ValidationService
 from app.services.export_service import export_service
-from app.models.database import AsyncSessionLocal
+from app.models.database import AsyncSessionLocal, engine
 from app.models.extraction import ExtractionJob
 from app.core.exceptions import (
     URLValidationError,
@@ -62,10 +62,16 @@ def process_extraction_job(self, job_id: str) -> Dict[str, Any]:
         meta={'status': 'Starting extraction...'}
     )
     
-    # Run async workflow
-    result = asyncio.run(_process_extraction_async(job_id, self))
-    
-    return result
+    # Run async workflow. Each task gets a fresh event loop via asyncio.run, so
+    # pooled DB connections must be released before that loop closes, otherwise
+    # the next task fails with "attached to a different loop".
+    async def _run() -> Dict[str, Any]:
+        try:
+            return await _process_extraction_async(job_id, self)
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(_run())
 
 
 async def _process_extraction_async(job_id: str, task: Task) -> Dict[str, Any]:
